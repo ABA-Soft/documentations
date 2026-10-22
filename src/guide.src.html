@@ -1,0 +1,1274 @@
+<title>FIDE Test Development Guide</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="User guide for the FideV2 Test Development module: for item writers, translators and test developers.">
+<style>
+/* Layout: two-column guide: sticky table of contents with role filter on the left, readable chapters on the right. Follows the app's own --app-* tokens so the guide looks like part of the app. */
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --surface-muted: #f9fafb;
+  --surface-hover: #f2f4f7;
+  --border: #e4e7ec;
+  --border-strong: #d0d5dd;
+  --text: #101828;
+  --text-2: #475467;
+  --muted: #667085;
+  --brand: #d71f2b;
+  --brand-hover: #b91c1c;
+  --brand-soft: #fdecee;
+  --success: #067647; --success-soft: #ecfdf3;
+  --warning: #b54708; --warning-soft: #fffaeb;
+  --danger: #b42318;  --danger-soft: #fef3f2;
+  --info: #175cd3;    --info-soft: #eff8ff;
+  --mark: #fde68a;
+  --shadow: 0 1px 3px rgba(16,24,40,.08), 0 1px 2px rgba(16,24,40,.04);
+  --shadow-lg: 0 12px 24px -6px rgba(16,24,40,.18), 0 4px 8px -4px rgba(16,24,40,.08);
+  --font: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "SFMono-Regular", Menlo, monospace;
+  --radius: 8px; --radius-lg: 12px;
+  --side-w: 288px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c0e12; --surface: #15181e; --surface-muted: #1a1e25; --surface-hover: #1f242c;
+    --border: #2a2f39; --border-strong: #3b414d;
+    --text: #f1f3f6; --text-2: #c5cad3; --muted: #969eab;
+    --brand: #f04452; --brand-hover: #f97066; --brand-soft: rgba(240,68,82,.16);
+    --success: #47cd89; --success-soft: rgba(23,178,106,.14);
+    --warning: #fdb022; --warning-soft: rgba(247,144,9,.14);
+    --danger: #f97066;  --danger-soft: rgba(240,68,56,.14);
+    --info: #84caff;    --info-soft: rgba(46,144,250,.14);
+    --mark: #92400e;
+    --shadow: 0 1px 3px rgba(0,0,0,.4);
+    --shadow-lg: 0 12px 24px -6px rgba(0,0,0,.6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0c0e12; --surface: #15181e; --surface-muted: #1a1e25; --surface-hover: #1f242c;
+  --border: #2a2f39; --border-strong: #3b414d;
+  --text: #f1f3f6; --text-2: #c5cad3; --muted: #969eab;
+  --brand: #f04452; --brand-hover: #f97066; --brand-soft: rgba(240,68,82,.16);
+  --success: #47cd89; --success-soft: rgba(23,178,106,.14);
+  --warning: #fdb022; --warning-soft: rgba(247,144,9,.14);
+  --danger: #f97066;  --danger-soft: rgba(240,68,56,.14);
+  --info: #84caff;    --info-soft: rgba(46,144,250,.14);
+  --mark: #92400e;
+  --shadow: 0 1px 3px rgba(0,0,0,.4);
+  --shadow-lg: 0 12px 24px -6px rgba(0,0,0,.6);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { scroll-padding-top: calc(72px + env(safe-area-inset-top, 0px)); }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.6 var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--surface); }
+a { color: var(--info); }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
+kbd {
+  font: 600 12px/1 var(--font-mono); padding: 3px 6px; border-radius: 5px;
+  border: 1px solid var(--border-strong); border-bottom-width: 2px; background: var(--surface); color: var(--text);
+}
+code { font: 13px var(--font-mono); background: var(--surface-hover); padding: 1px 5px; border-radius: 4px; }
+mark.hit { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 1px; }
+mark.hit.current { outline: 2px solid var(--brand); }
+
+/* ---------- Top bar ---------- */
+.topbar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding-block: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; align-items: center; gap: 12px;
+}
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); min-width: 0; }
+.brand-mark {
+  flex: none; width: 34px; height: 34px; border-radius: 8px; background: var(--brand); color: #fff;
+  display: grid; place-items: center; font: 800 13px/1 var(--font); letter-spacing: .04em;
+}
+.brand-text { min-width: 0; }
+.brand-text strong { display: block; font-size: 15px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand-text span { display: block; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.search-wrap { position: relative; flex: 1 1 auto; max-width: 560px; margin-left: auto; }
+.search-wrap input {
+  width: 100%; height: 38px; border-radius: var(--radius); border: 1px solid var(--border-strong);
+  background: var(--surface-muted); color: var(--text); font: 14px var(--font);
+  padding: 0 64px 0 36px;
+}
+.search-wrap input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); background: var(--surface); }
+.search-wrap .s-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.search-wrap .s-kbd { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+.results {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 40;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg); max-height: min(70vh, 520px); overflow: auto; padding: 6px;
+}
+.results .r-head { font-size: 12px; color: var(--muted); padding: 6px 10px; display: flex; justify-content: space-between; gap: 8px; }
+.results a {
+  display: block; text-decoration: none; color: var(--text); padding: 8px 10px; border-radius: var(--radius);
+}
+.results a[aria-selected="true"], .results a:hover { background: var(--surface-hover); }
+.results .r-title { font-weight: 600; font-size: 14px; }
+.results .r-path { margin-left: 8px; }
+.results .r-path { font-size: 12px; color: var(--muted); font-weight: 400; }
+.results .r-snip { font-size: 13px; color: var(--text-2); margin-top: 2px; }
+.results .r-empty { padding: 14px 10px; color: var(--muted); font-size: 14px; }
+.icon-btn {
+  flex: none; height: 38px; min-width: 38px; border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); cursor: pointer; display: inline-grid; place-items: center; padding: 0 10px; font: 13px var(--font);
+}
+.icon-btn:hover { background: var(--surface-hover); }
+.menu-btn { display: none; }
+
+/* ---------- Layout ---------- */
+.layout {
+  display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr); gap: 32px;
+  max-width: 1280px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.side {
+  position: sticky; top: calc(59px + env(safe-area-inset-top, 0px)); align-self: start;
+  height: calc(100vh - 59px - env(safe-area-inset-top, 0px)); overflow: auto; padding-block: 20px 40px;
+}
+.roles { display: grid; gap: 6px; margin-bottom: 18px; }
+.roles-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.role-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-2);
+  border-radius: 999px; padding: 4px 11px; font: 600 12.5px var(--font); cursor: pointer;
+}
+.chip:hover { border-color: var(--brand); color: var(--brand); }
+.chip[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #fff; }
+.toc { font-size: 14px; }
+.toc ol { list-style: none; margin: 0; padding: 0; }
+.toc > ol > li { margin-bottom: 14px; }
+.toc .part { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px 10px; display: block; }
+.toc a {
+  display: block; padding: 4px 10px; border-radius: 6px; color: var(--text-2); text-decoration: none; line-height: 1.35;
+  border-left: 2px solid transparent;
+}
+.toc a:hover { background: var(--surface-hover); color: var(--text); }
+.toc a.active { color: var(--brand); border-left-color: var(--brand); background: var(--brand-soft); font-weight: 600; }
+.toc li.dim > a { opacity: .38; }
+
+main { min-width: 0; padding-block: 28px 120px; }
+.hero { margin-bottom: 28px; }
+.hero .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--brand); }
+.hero h1 { font-size: clamp(26px, 4vw, 34px); line-height: 1.15; margin: 6px 0 10px; text-wrap: balance; letter-spacing: -.01em; }
+.hero p { color: var(--text-2); max-width: 68ch; margin: 0 0 8px; }
+.meta-line { font-size: 13px; color: var(--muted); }
+
+.start-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 22px 0 8px; }
+.start-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px;
+  display: grid; gap: 6px; align-content: start; text-decoration: none; color: var(--text); box-shadow: var(--shadow);
+}
+.start-card:hover { border-color: var(--brand); }
+.start-card .sc-role { font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+.start-card .sc-dot { width: 10px; height: 10px; border-radius: 50%; }
+.start-card p { margin: 0; font-size: 13.5px; color: var(--text-2); }
+.start-card ul { margin: 4px 0 0; padding-left: 18px; font-size: 13.5px; color: var(--text-2); }
+.start-card .sc-go { font-size: 13px; font-weight: 600; color: var(--brand); margin-top: 4px; }
+
+section.chapter { scroll-margin-top: 72px; }
+.part-title {
+  font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+  margin: 56px 0 4px; display: flex; align-items: center; gap: 10px;
+}
+.part-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+article.sec {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 22px 26px; margin: 14px 0; box-shadow: var(--shadow);
+}
+article.sec.hidden-role { display: none; }
+article.sec h2 { font-size: 21px; line-height: 1.25; margin: 0 0 4px; text-wrap: balance; letter-spacing: -.005em; }
+article.sec h3 { font-size: 16px; margin: 22px 0 6px; }
+article.sec h4 { font-size: 14px; margin: 16px 0 4px; color: var(--text-2); }
+article.sec p, article.sec li { max-width: 72ch; }
+article.sec p { margin: 0 0 10px; }
+article.sec ul, article.sec ol { margin: 0 0 12px; padding-left: 22px; }
+article.sec li { margin: 3px 0; }
+.sec-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+.sec-head .lead { color: var(--text-2); margin: 0; font-size: 14.5px; }
+.who { display: flex; gap: 6px; flex-wrap: wrap; }
+.tag {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600;
+  padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--text-2); background: var(--surface-muted);
+  white-space: nowrap;
+}
+.tag .d { width: 7px; height: 7px; border-radius: 50%; }
+.c-writer { background: #2e90fa; }
+.c-translator { background: #12b76a; }
+.c-dev { background: #d71f2b; }
+.c-all { background: #98a2b3; }
+.copy-link {
+  margin-right: auto; align-self: center;
+  border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 2px 6px; border-radius: 6px;
+}
+.copy-link:hover { color: var(--brand); background: var(--surface-hover); }
+
+.ui { font-weight: 600; color: var(--text); background: var(--surface-hover); border: 1px solid var(--border); padding: 0 6px; border-radius: 5px; font-size: .93em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+
+ol.steps { counter-reset: st; list-style: none; padding-left: 0; }
+ol.steps > li { counter-increment: st; position: relative; padding-left: 36px; margin: 8px 0; }
+ol.steps > li::before {
+  content: counter(st); position: absolute; left: 0; top: 1px; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--brand-soft); color: var(--brand); font-weight: 700; font-size: 13px; display: grid; place-items: center;
+}
+
+.callout { border: 1px solid var(--border); border-left-width: 4px; border-radius: var(--radius); padding: 10px 14px; margin: 12px 0; font-size: 14px; }
+.callout p:last-child { margin-bottom: 0; }
+.callout strong.t { display: block; margin-bottom: 2px; }
+.callout.tip { border-left-color: var(--success); background: var(--success-soft); }
+.callout.warn { border-left-color: var(--warning); background: var(--warning-soft); }
+.callout.info { border-left-color: var(--info); background: var(--info-soft); }
+.callout.danger { border-left-color: var(--danger); background: var(--danger-soft); }
+
+figure.shot { margin: 14px 0 16px; }
+figure.shot .frame {
+  display: block; width: fit-content; max-width: 100%; border: 1px solid var(--border-strong); border-radius: var(--radius); overflow: hidden;
+  background: var(--surface-muted); cursor: zoom-in; padding: 0; position: relative;
+}
+figure.shot img { display: block; max-width: 100%; height: auto; }
+figure.shot .ph {
+  width: 640px; aspect-ratio: 16 / 9; max-width: 100%; display: grid; place-items: center; color: var(--muted); font-size: 13px; padding: 16px; text-align: center;
+  background: repeating-linear-gradient(45deg, var(--surface-muted), var(--surface-muted) 10px, var(--surface-hover) 10px, var(--surface-hover) 20px);
+}
+figure.shot figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; }
+figure.shot.narrow { max-width: 620px; }
+.zoom-hint {
+  position: absolute; right: 8px; bottom: 8px; background: rgba(16,24,40,.72); color: #fff; font-size: 11.5px;
+  padding: 3px 8px; border-radius: 6px; opacity: 0; transition: opacity .15s;
+}
+figure.shot .frame:hover .zoom-hint, figure.shot .frame:focus-visible .zoom-hint { opacity: 1; }
+
+.table-wrap { overflow-x: auto; margin: 10px 0 14px; border: 1px solid var(--border); border-radius: var(--radius); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { background: var(--surface-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td .ui { white-space: normal; }
+
+/* lifecycle strip */
+.lifecycle { display: flex; gap: 0; margin: 14px 0 6px; overflow-x: auto; padding-bottom: 4px; }
+.lc-step { flex: 1 0 118px; position: relative; padding: 10px 12px 10px 18px; background: var(--surface-muted); border: 1px solid var(--border); font-size: 13px; }
+.lc-step + .lc-step { border-left: 0; }
+.lc-step:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+.lc-step:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
+.lc-step b { display: block; font-size: 13.5px; }
+.lc-step span { color: var(--muted); font-size: 12px; display: block; line-height: 1.35; }
+.lc-step i { font-style: normal; display: inline-block; margin-top: 4px; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; color: #fff; }
+
+/* status pills */
+.st { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; white-space: nowrap; border: 1px solid transparent; }
+:root {
+  --st-assigned-bg: #ddebf8; --st-assigned-fg: #215e99;
+  --st-draft-bg: #fef9d7; --st-draft-fg: #827102;
+  --st-review-bg: #feedb7; --st-review-fg: #a75605;
+  --st-revision-bg: #fef6c3; --st-revision-fg: #6a5c02;
+  --st-translated-bg: #e5f6df; --st-translated-fg: #397b22;
+  --st-ready-bg: #def7e1; --st-ready-fg: #196b24;
+  --st-testing-bg: #f6dff4; --st-testing-fg: #a02b93;
+  --st-discarded-bg: #ffd6d6; --st-discarded-fg: #ca0000;
+  --st-archived-bg: #ebebeb; --st-archived-fg: #6a6a6a;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --st-assigned-bg: #1c2b3d; --st-assigned-fg: #8ab8e6;
+    --st-draft-bg: #45411c; --st-draft-fg: #fdeb72;
+    --st-review-bg: #4b331d; --st-review-fg: #fbb874;
+    --st-revision-bg: #37351c; --st-revision-fg: #fce973;
+    --st-translated-bg: #334635; --st-translated-fg: #a4e08f;
+    --st-ready-bg: #1a2e23; --st-ready-fg: #8be497;
+    --st-testing-bg: #37203c; --st-testing-fg: #e18ed8;
+    --st-discarded-bg: #49171b; --st-discarded-fg: #ff7070;
+    --st-archived-bg: #2e3035; --st-archived-fg: #b8b8b8;
+  }
+}
+:root[data-theme="dark"] {
+  --st-assigned-bg: #1c2b3d; --st-assigned-fg: #8ab8e6;
+  --st-draft-bg: #45411c; --st-draft-fg: #fdeb72;
+  --st-review-bg: #4b331d; --st-review-fg: #fbb874;
+  --st-revision-bg: #37351c; --st-revision-fg: #fce973;
+  --st-translated-bg: #334635; --st-translated-fg: #a4e08f;
+  --st-ready-bg: #1a2e23; --st-ready-fg: #8be497;
+  --st-testing-bg: #37203c; --st-testing-fg: #e18ed8;
+  --st-discarded-bg: #49171b; --st-discarded-fg: #ff7070;
+  --st-archived-bg: #2e3035; --st-archived-fg: #b8b8b8;
+}
+.st-assigned { background: var(--st-assigned-bg); color: var(--st-assigned-fg); }
+.st-draft { background: var(--st-draft-bg); color: var(--st-draft-fg); }
+.st-review { background: var(--st-review-bg); color: var(--st-review-fg); }
+.st-revision { background: var(--st-revision-bg); color: var(--st-revision-fg); }
+.st-translated { background: var(--st-translated-bg); color: var(--st-translated-fg); }
+.st-ready { background: var(--st-ready-bg); color: var(--st-ready-fg); }
+.st-testing { background: var(--st-testing-bg); color: var(--st-testing-fg); }
+.st-discarded { background: var(--st-discarded-bg); color: var(--st-discarded-fg); }
+.st-archived { background: var(--st-archived-bg); color: var(--st-archived-fg); }
+
+/* FAQ */
+details.faq { border: 1px solid var(--border); border-radius: var(--radius); margin: 8px 0; background: var(--surface); }
+details.faq summary {
+  cursor: pointer; padding: 11px 14px 11px 40px; font-weight: 600; list-style: none; position: relative; font-size: 14.5px;
+}
+details.faq summary::-webkit-details-marker { display: none; }
+details.faq summary::before {
+  content: ""; position: absolute; left: 16px; top: 17px; width: 7px; height: 7px;
+  border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform .15s;
+}
+details.faq[open] summary::before { transform: rotate(45deg); top: 14px; }
+details.faq summary:hover { background: var(--surface-hover); border-radius: var(--radius); }
+details.faq .a { padding: 0 16px 12px 40px; font-size: 14px; }
+details.faq .a p:last-child, details.faq .a ul:last-child { margin-bottom: 0; }
+.faq-tools { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 4px; }
+.btn-sm { border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-2); border-radius: 6px; padding: 4px 10px; font: 600 12.5px var(--font); cursor: pointer; }
+.btn-sm:hover { background: var(--surface-hover); color: var(--text); }
+
+.filter-input { width: 100%; max-width: 360px; height: 34px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); padding: 0 10px; font: 14px var(--font); margin: 4px 0 8px; }
+
+.foot { margin-top: 48px; font-size: 13px; color: var(--muted); }
+
+/* lightbox */
+.lightbox {
+  position: fixed; inset: 0; z-index: 100; background: rgba(8,10,14,.86); display: grid; grid-template-rows: auto 1fr; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+.lb-bar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: #f1f3f6; font-size: 14px; }
+.lb-bar span { flex: 1; min-width: 0; }
+.lb-bar button { border: 1px solid rgba(255,255,255,.3); background: transparent; color: #fff; border-radius: 6px; padding: 5px 12px; cursor: pointer; font: 600 13px var(--font); }
+.lb-body { overflow: auto; display: grid; place-items: center; padding: 8px 16px 24px; }
+.lb-body img { max-width: 100%; height: auto; border-radius: 6px; box-shadow: 0 20px 60px rgba(0,0,0,.6); background: #fff; }
+.lb-body.full img { max-width: none; }
+
+.backtop {
+  position: fixed; right: max(16px, calc(env(safe-area-inset-right, 0px) + 16px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  z-index: 15; border-radius: 999px; box-shadow: var(--shadow-lg);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 980px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .side {
+    position: fixed; z-index: 50; top: 0; bottom: 0; left: 0; height: auto; width: min(320px, 86vw);
+    background: var(--surface); border-right: 1px solid var(--border); box-shadow: var(--shadow-lg);
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 16px 40px max(16px, env(safe-area-inset-left, 0px));
+    transform: translateX(-105%); transition: transform .2s;
+  }
+  body.nav-open .side { transform: none; }
+  body.nav-open::after { content: ""; position: fixed; inset: 0; z-index: 45; background: rgba(8,10,14,.45); }
+  .menu-btn { display: inline-grid; }
+  .start-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .brand-text span { display: none; }
+  .brand-text strong { font-size: 14px; }
+  .search-wrap .s-kbd { display: none; }
+  .search-wrap input { padding-right: 10px; }
+  article.sec { padding: 18px 16px; }
+  .theme-btn { display: none; }
+}
+@media (max-width: 420px) { .brand-text { display: none; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+</style>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open table of contents" aria-expanded="false">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+  </button>
+  <a class="brand" href="#start">
+    <span class="brand-mark">FIDE</span>
+    <span class="brand-text"><strong>Test Development Guide</strong><span>FideV2 · User guide</span></span>
+  </a>
+  <div class="search-wrap" role="search">
+    <svg class="s-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="Search, e.g. submit, answer key, ★, archive…" aria-label="Search the guide" aria-controls="results" aria-expanded="false">
+    <span class="s-kbd"><kbd>/</kbd></span>
+    <div class="results" id="results" role="listbox" hidden></div>
+  </div>
+  <button class="icon-btn theme-btn" id="themeBtn" aria-label="Switch light or dark theme" title="Switch theme">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+  </button>
+</header>
+
+<div class="layout">
+  <aside class="side" id="side" aria-label="Table of contents">
+    <div class="roles">
+      <span class="roles-label">Show for role</span>
+      <div class="role-chips" id="roleChips">
+        <button class="chip" data-role="all" aria-pressed="true">Everyone</button>
+        <button class="chip" data-role="writer" aria-pressed="false">Item writer</button>
+        <button class="chip" data-role="translator" aria-pressed="false">Translator</button>
+        <button class="chip" data-role="dev" aria-pressed="false">Test developer</button>
+      </div>
+    </div>
+    <nav class="toc" id="toc"></nav>
+  </aside>
+
+  <main id="main">
+    <div class="hero" id="start">
+      <div class="eyebrow">User guide</div>
+      <h1>Test Development in FideV2</h1>
+      <p>The Test Development module is where the tasks for the fide exams are created. A test developer assigns a module, an item writer writes it, the test developer reviews it, translators create the other two language versions, and the finished module goes into a test version.</p>
+      <p>This guide walks through the steps for each role, briefly. If you are stuck, start with <a href="#troubleshooting">Troubleshooting</a>, or search with the field above (<kbd>/</kbd> or <kbd>Ctrl</kbd> <kbd>K</kbd>).</p>
+      <div class="meta-line">The interface can be shown in English, German, French or Italian. This guide quotes the English labels, e.g. <span class="ui">Submit for review</span>.</div>
+
+      <div class="start-grid">
+        <a class="start-card" href="#writer-todos" data-pick="writer">
+          <span class="sc-role"><span class="sc-dot c-writer"></span>I'm an item writer</span>
+          <p>I write and revise tasks.</p>
+          <ul><li>Where are my tasks?</li><li>How do I submit for review?</li><li>What if it was sent back?</li></ul>
+          <span class="sc-go">Go to the item writer section →</span>
+        </a>
+        <a class="start-card" href="#translations" data-pick="translator">
+          <span class="sc-role"><span class="sc-dot c-translator"></span>I'm a translator</span>
+          <p>I translate approved tasks into French, Italian or German.</p>
+          <ul><li>Which panel do I work in?</li><li>How do I submit a translation?</li><li>What is "Source text"?</li></ul>
+          <span class="sc-go">Go to the translator section →</span>
+        </a>
+        <a class="start-card" href="#task-bank" data-pick="dev">
+          <span class="sc-role"><span class="sc-dot c-dev"></span>I'm a test developer</span>
+          <p>I assign modules, review tasks and build test versions.</p>
+          <ul><li>Task bank and review queue</li><li>Review decisions</li><li>Test versions and export</li></ul>
+          <span class="sc-go">Go to the test developer section →</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- ================= BASICS ================= -->
+    <section class="chapter" data-part="Basics">
+      <div class="part-title">1 · Basics</div>
+
+      <article class="sec" id="sign-in" data-roles="all" data-title="Signing in and Home">
+        <div class="sec-head"><h2>Signing in and Home</h2><div class="who"><span class="tag"><span class="d c-all"></span>Everyone</span></div></div>
+        <ol class="steps">
+          <li>Open the application address. You are taken to the FIDE sign-in page (Keycloak).</li>
+          <li>Enter your e-mail address and password. Your administrator gives you a password; ask them if you forget it.</li>
+          <li>After signing in you land on the page for your role: <span class="ui">My tasks</span> for item writers, <span class="ui">My translations</span> for translators, <span class="ui">Task bank</span> for test developers.</li>
+        </ol>
+        <p><span class="ui">Home</span> shows quick actions and the workspaces you can use. Test developers also see a <span class="ui">Waiting for your review</span> card when a task needs their decision.</p>
+        <figure class="shot" data-shot="home"><figcaption>Home as a test developer: greeting, tasks waiting for review, quick actions.</figcaption></figure>
+        <div class="callout info"><strong class="t">A menu item is missing, or you see "Unauthorized"?</strong><p>The menu follows your permissions. Ask your administrator to add you to the right group (ItemWriter, Translator or TestDeveloper). The change applies the next time you sign in.</p></div>
+      </article>
+
+      <article class="sec" id="interface" data-roles="all" data-title="Using the interface">
+        <div class="sec-head"><h2>Using the interface</h2><div class="who"><span class="tag"><span class="d c-all"></span>Everyone</span></div></div>
+        <figure class="shot" data-shot="shell"><figcaption>Quick search (Ctrl K): filters pages and quick actions as you type.</figcaption></figure>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Element</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td>Sidebar</td><td>The items of the <span class="ui">Test development</span> section. A badge (e.g. next to <span class="ui">Task bank</span>) counts items waiting for you. The sidebar collapses to icons; on narrow screens open it with the button at the top left.</td></tr>
+            <tr><td>Breadcrumbs</td><td>Show where you are. Click to go back to the parent list.</td></tr>
+            <tr><td>Quick search</td><td><kbd>Ctrl</kbd> <kbd>K</kbd> (<kbd>⌘</kbd> <kbd>K</kbd> on Mac): type a page name or action, e.g. "task bank" or "assign", then press <kbd>Enter</kbd>.</td></tr>
+            <tr><td>Language</td><td>Interface language: English, Deutsch, Français, Italiano. Remembered per browser. It does not change the language of the tasks.</td></tr>
+            <tr><td>User menu</td><td>Your name and e-mail, light/dark theme, sign out.</td></tr>
+          </tbody>
+        </table></div>
+        <h3>Lists and tables</h3>
+        <ul>
+          <li><b>Tabs</b> at the top filter by status and show a count.</li>
+          <li><b>Search and filters</b> sit below the tabs; <span class="ui">Clear filters</span> resets them.</li>
+          <li><b>Column picker</b> (<span class="ui">Columns</span>): show or hide columns. The setting is saved to your account, so it follows you to other computers.</li>
+          <li>The button at the end of a row always names the next step (e.g. <span class="ui">Start</span>, <span class="ui">Revise</span>, <span class="ui">Translate</span>).</li>
+        </ul>
+        <div class="callout tip"><strong class="t">Tip</strong><p>Success and error messages appear briefly at the top right. Read an error message: it usually says what is missing.</p></div>
+      </article>
+
+      <article class="sec" id="concepts" data-roles="all" data-title="Key concepts">
+        <div class="sec-head"><h2>Key concepts</h2><div class="who"><span class="tag"><span class="d c-all"></span>Everyone</span></div></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><b>Test kind</b></td><td><b>Fide</b> (adult test) or <b>Fide Edu</b> (school version).</td></tr>
+            <tr><td><b>Skill</b></td><td><b>Reading and Writing</b>, <b>Speaking</b>, <b>Listening Comprehension</b>.</td></tr>
+            <tr><td><b>Level</b></td><td>A1, A2, B1, B2. Test versions also use band levels: A1A2, A2B1, B1B2.</td></tr>
+            <tr><td><b>Module</b></td><td>A package of tasks within a test (e.g. <code>module2</code>, <code>part1</code>). Linked to one scenario. The same module number can exist several times; the task bank tells them apart with a number (e.g. <code>module1 · [2]</code>).</td></tr>
+            <tr><td><b>Task</b></td><td>One task in a module (e.g. <code>task5</code>). It has one version per language.</td></tr>
+            <tr><td><b>Language version</b></td><td>The DE, FR or IT copy of a task, with its own status and assignee.</td></tr>
+            <tr><td><b>Source language</b> (Source)</td><td>The language the item writer writes the task in. The other two languages are only created after the review approves it, for translation.</td></tr>
+            <tr><td><b>Scenario</b></td><td>A three-level topic catalogue: <b>Domain</b> → <b>Action field</b> → <b>Scenario</b>. Every module belongs to one scenario.</td></tr>
+            <tr><td><b>Item</b></td><td>A question or answer element within a field. It can be an <b>example item</b> (marked E) and can have <b>alternatives</b> (several versions, one of them preferred).</td></tr>
+            <tr><td><b>Answer key</b></td><td>The correct answer and points for each item.</td></tr>
+            <tr><td><b>Test version</b></td><td>A set of selected modules for one test (variant, kind, skill, level). Exported as a ZIP per language.</td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="sec" id="lifecycle" data-roles="all" data-title="The life of a task">
+        <div class="sec-head"><h2>The life of a task</h2><div class="who"><span class="tag"><span class="d c-all"></span>Everyone</span></div></div>
+        <p class="lead">The editors show this seven-step bar at the top, with the current step highlighted. Below it, <span class="ui">Next step</span> tells you what to do.</p>
+        <div class="lifecycle" role="list" aria-label="Lifecycle">
+          <div class="lc-step" role="listitem"><b>1. Writing</b><span>Item writer writes and revises</span><i class="c-writer">Writer</i></div>
+          <div class="lc-step" role="listitem"><b>2. Review</b><span>Reviewer decides</span><i class="c-dev">Test dev</i></div>
+          <div class="lc-step" role="listitem"><b>3. Translation</b><span>Into the other 2 languages</span><i class="c-translator">Translator</i></div>
+          <div class="lc-step" role="listitem"><b>4. Translation review</b><span>Languages compared</span><i class="c-dev">Test dev</i></div>
+          <div class="lc-step" role="listitem"><b>5. Trial</b><span>Tried out in a test version</span><i class="c-dev">Test dev</i></div>
+          <div class="lc-step" role="listitem"><b>6. Final review</b><span>Final decision</span><i class="c-dev">Test dev</i></div>
+          <div class="lc-step" role="listitem"><b>7. Released</b><span>Released</span><i class="c-all">–</i></div>
+        </div>
+        <figure class="shot" data-shot="lifecycle"><figcaption>The lifecycle bar and the "Next step" guidance in the editor.</figcaption></figure>
+        <h3>The most important rules</h3>
+        <ul>
+          <li><b>Saving is not submitting.</b> <span class="ui">Save draft</span> only saves your work. The task moves on only with a <span class="ui">Submit…</span> button.</li>
+          <li><b>Locked after submitting.</b> You can only edit it again if it is sent back to you.</li>
+          <li><b>From translation on, the whole module moves together.</b> When every translation of a module is done, the whole module goes to translation review at once; <span class="ui">Ready for Trial</span>, testing and the final decision also apply to the whole module.</li>
+          <li><b>A pending scenario proposal blocks the module.</b> Until it is decided, no task of the module can be submitted.</li>
+        </ul>
+        <p>Every status is explained briefly in <a href="#statuses">Statuses</a>.</p>
+      </article>
+
+      <article class="sec" id="roles" data-roles="all" data-title="Roles: who sees what">
+        <div class="sec-head"><h2>Roles: who sees what</h2><div class="who"><span class="tag"><span class="d c-all"></span>Everyone</span></div></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Menu item</th><th>Item writer</th><th>Translator</th><th>Test developer</th></tr></thead>
+          <tbody>
+            <tr><td><span class="ui">My to-dos</span> – everything waiting for you</td><td>✓</td><td>✓</td><td>–</td></tr>
+            <tr><td><span class="ui">My tasks</span> – tasks to write and revise</td><td>✓</td><td>–</td><td>–</td></tr>
+            <tr><td><span class="ui">My translations</span> – tasks to translate</td><td>–</td><td>✓</td><td>–</td></tr>
+            <tr><td><span class="ui">Task bank</span> – all modules, review queue</td><td>–</td><td>–</td><td>✓</td></tr>
+            <tr><td><span class="ui">Test versions</span> – test versions, export</td><td>–</td><td>–</td><td>✓</td></tr>
+            <tr><td><span class="ui">Scenario catalogue</span></td><td>read</td><td>read</td><td>read + add</td></tr>
+            <tr><td><span class="ui">Scenario proposals</span> – decide on proposals</td><td>–</td><td>–</td><td>✓</td></tr>
+          </tbody>
+        </table></div>
+        <p>The <b>reviewer</b> is not a separate role: the test developer reviews the task. In user lists a star (★) marks people who have already worked on the task (e.g. its linked reviewer or the original item writer).</p>
+      </article>
+    </section>
+
+    <!-- ================= ITEM WRITER ================= -->
+    <section class="chapter" data-part="Item writer">
+      <div class="part-title">2 · For item writers</div>
+
+      <article class="sec" id="writer-todos" data-roles="writer translator" data-title="My to-dos and My tasks">
+        <div class="sec-head"><h2>My to-dos and My tasks</h2><div class="who"><span class="tag"><span class="d c-writer"></span>Item writer</span><span class="tag"><span class="d c-translator"></span>Translator</span></div></div>
+        <p class="lead"><span class="ui">My to-dos</span> shows everything waiting for you in one place: writing, revising and translating.</p>
+        <figure class="shot" data-shot="my-todos"><figcaption>My to-dos: grouped by what you need to do, with the next-step button on each row.</figcaption></figure>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Group</th><th>Meaning</th><th>Button</th></tr></thead>
+          <tbody>
+            <tr><td><b>To revise</b></td><td>The reviewer sent it back with comments. Start with these.</td><td><span class="ui">Revise</span></td></tr>
+            <tr><td><b>To write</b></td><td>Assigned to you, not handed in yet.</td><td><span class="ui">Write</span></td></tr>
+            <tr><td><b>To translate</b></td><td>Language versions assigned to you for translation.</td><td><span class="ui">Translate</span></td></tr>
+            <tr><td><b>Waiting for review</b></td><td>You handed it in and the reviewer has it. Nothing to do; you can only view it.</td><td><span class="ui">View</span></td></tr>
+          </tbody>
+        </table></div>
+        <h3>My tasks</h3>
+        <p>A more detailed list of your writing tasks, with filters and a column picker. Tabs: <span class="ui">All</span>, <span class="ui">Needs revision</span>, <span class="ui">Not started</span>, <span class="ui">In progress</span>. The row button: <span class="ui">Start</span> (not touched yet), <span class="ui">Continue</span> (draft), <span class="ui">Revise</span> (sent back).</p>
+        <figure class="shot" data-shot="my-tasks"><figcaption>My tasks: tabs by status, the next-step button at the end of the row.</figcaption></figure>
+        <div class="callout warn"><strong class="t">Clearing a draft</strong><p>For a task in <span class="st st-draft">Draft</span>, <span class="ui">Clear draft content</span> in the row menu deletes every field. This cannot be undone.</p></div>
+        <p>You also get an e-mail about a new assignment (if e-mail notifications are on for you). The link in the e-mail takes you straight to the task.</p>
+      </article>
+
+      <article class="sec" id="task-editor" data-roles="writer" data-title="The task editor">
+        <div class="sec-head"><h2>The task editor</h2><div class="who"><span class="tag"><span class="d c-writer"></span>Item writer</span></div></div>
+        <figure class="shot" data-shot="editor"><figcaption>Item writer editor: lifecycle and next step, scenario and instructions, the form below, and the sticky save/submit bar at the bottom. The task language is shown at the top right.</figcaption></figure>
+        <h3>From top to bottom</h3>
+        <ol class="steps">
+          <li><b>Lifecycle and Next step</b>: where the task is and what you need to do.</li>
+          <li><b>Domain / Action field / Scenario</b> card with <b>Instructions</b> below it: the topic of the module and the test developer's notes for you. Read them before you start. If the scenario does not fit, see <a href="#propose-scenario">Proposing a scenario change</a>.</li>
+          <li><b>Tasks in this module</b>: if you have several tasks in the module, switch between them here (with their status). Switching saves automatically.</li>
+          <li><b>The form</b>: the fields of the task type, in the order of the task structure.</li>
+          <li><b>Sticky bar at the bottom</b>: <span class="ui">Save draft</span> and <span class="ui">Submit for review</span>, with the number of incomplete fields.</li>
+        </ol>
+        <div class="callout info"><strong class="t">Unsaved changes</strong><p>If you try to leave without saving, you get a warning (<span class="ui">Unsaved changes</span>). <span class="ui">Leave without saving</span> discards your changes; <span class="ui">Cancel</span> takes you back to the editor.</p></div>
+      </article>
+
+      <article class="sec" id="fields" data-roles="writer translator" data-title="Filling in the fields">
+        <div class="sec-head"><h2>Filling in the fields</h2><div class="who"><span class="tag"><span class="d c-writer"></span>Item writer</span><span class="tag"><span class="d c-translator"></span>Translator</span></div></div>
+        <p class="lead">The task type sets the order and number of fields; you cannot change them. Fields marked with a star are required.</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Field</th><th>What goes in</th></tr></thead>
+          <tbody>
+            <tr><td>Situation description</td><td>A short description of the situation.</td></tr>
+            <tr><td>Context image</td><td>An image for the situation. Without one, a placeholder image is used.</td></tr>
+            <tr><td>Instruction / Instruction input / Introduction</td><td>Instructions and introductory text. If several instructions are needed, fill in all of them.</td></tr>
+            <tr><td>Input text</td><td>The main text of the task (formatted), with an optional title and salutation.</td></tr>
+            <tr><td>Items / Item group</td><td>Questions and answers with a title. Can include an example item (E) and alternatives.</td></tr>
+            <tr><td>Multiple-choice items</td><td>Multiple-choice items with options.</td></tr>
+            <tr><td>Construct description, Examiner items</td><td>Speaking tasks: construct description, examiner instructions, images and image descriptions.</td></tr>
+            <tr><td>Audio file, Image items</td><td>Listening comprehension: audio file or transcript, image items.</td></tr>
+            <tr><td>Response</td><td>Sample response (e-mail or letter): address, salutation, text.</td></tr>
+          </tbody>
+        </table></div>
+        <h3>Items, examples, alternatives</h3>
+        <ul>
+          <li><span class="ui">Add item</span> adds an item to the field; <span class="ui">Add example item</span> adds an example (marked E).</li>
+          <li><span class="ui">Alternative</span>: write another version of the same item. Exactly one per group is the <span class="ui">Preferred alternative</span>; only that one goes into the export.</li>
+          <li>Clicking an item number opens a menu for managing the numbering.</li>
+        </ul>
+        <h3>Images and audio</h3>
+        <ul>
+          <li>For images, <span class="ui">Browse</span> searches the images already uploaded, by file name. Click to select, double-click to use straight away. Upload a new one with <span class="ui">Upload new image</span> (.jpg, .png).</li>
+          <li>For audio, upload an .mp3, or give a transcript instead.</li>
+        </ul>
+        <figure class="shot narrow" data-shot="image-selector"><figcaption>Image selection: uploaded images can be reused in other tasks.</figcaption></figure>
+        <div class="callout tip"><strong class="t">Word count</strong><p>Some fields watch the word count (e.g. 180–200 words) and warn you when you are outside the range. It is only a warning; it does not block submitting.</p></div>
+      </article>
+
+      <article class="sec" id="answer-key" data-roles="writer dev" data-title="Answer key">
+        <div class="sec-head"><h2>Answer key</h2><div class="who"><span class="tag"><span class="d c-writer"></span>Item writer</span><span class="tag"><span class="d c-dev"></span>Test developer</span></div></div>
+        <p class="lead">For reading and listening tasks, every item (except examples) needs a correct answer.</p>
+        <ol class="steps">
+          <li>Click the <b>key icon</b> next to the item.</li>
+          <li>For a text answer, fill in <span class="ui">Correct Answer</span> and, if needed, answers that count as wrong (<span class="ui">Incorrect Answer</span>). For multiple choice, select the correct option.</li>
+          <li>Set the points (<span class="ui">Max. points</span>, more than 0), then <span class="ui">Save</span>.</li>
+        </ol>
+        <ul>
+          <li>Task types without an answer key (e.g. open-answer tasks) show no key icon.</li>
+          <li>If an answer is missing when you submit, you get a warning: <span class="ui">Go to Answer Key</span> (fill it in) or <span class="ui">Proceed anyway</span> (submit as is). It is better to fill it in.</li>
+          <li>During review the key is read-only (<span class="ui">View answer</span>).</li>
+        </ul>
+      </article>
+
+      <article class="sec" id="submit" data-roles="writer" data-title="Saving and submitting for review">
+        <div class="sec-head"><h2>Saving and submitting for review</h2><div class="who"><span class="tag"><span class="d c-writer"></span>Item writer</span></div></div>
+        <ol class="steps">
+          <li>At any time: <span class="ui">Save draft</span>. The task becomes <span class="st st-draft">Draft</span>; only you see the change.</li>
+          <li>If the bar says <b>"N required field(s) still incomplete"</b>, click <span class="ui">Show me</span>: it jumps to the first missing field and lists the others by name.</li>
+          <li>When everything is complete: <span class="ui">Submit for review</span>.</li>
+          <li>In the confirmation dialog the <b>reviewer</b> is usually selected automatically (★, locked field). If not, pick one from the list.</li>
+          <li><span class="ui">Submit</span>. The task moves to <span class="st st-review">Task Review</span>, the reviewer gets an e-mail, and you see it under <b>Waiting for review</b>.</li>
+        </ol>
+        <figure class="shot" data-shot="incomplete"><figcaption>After "Show me": the first missing field is highlighted, and the "Still incomplete" list at the bottom names the missing fields.</figcaption></figure>
+      </article>
+
+      <article class="sec" id="revision" data-roles="writer" data-title="Revisions and comments">
+        <div class="sec-head"><h2>Revisions and comments</h2><div class="who"><span class="tag"><span class="d c-writer"></span>Item writer</span></div></div>
+        <p class="lead">If the reviewer sends the task back (<span class="st st-revision">Task Revision</span>), it appears in your list with a <span class="ui">Revise</span> button.</p>
+        <ol class="steps">
+          <li>The <b>Changes requested by the reviewer</b> bar at the top of the editor shows how many comments there are and on how many fields.</li>
+          <li><span class="ui">Go to first comment</span>: jumps to and opens the first open comment. Fields with comments have an orange speech bubble with the number of open comments.</li>
+          <li>Fix the field, then click <span class="ui">Mark resolved</span> on the comment. The bar shows how many are still open ("X of Y still open").</li>
+          <li>When you are done: <span class="ui">Submit for review</span>.</li>
+        </ol>
+        <div class="callout info"><p>You can also reply to a comment: type in the box and click <span class="ui">Post comment</span>. Tasks that are assigned but not started yet (<span class="st st-assigned">Assigned</span>) have no comments.</p></div>
+      </article>
+
+      <article class="sec" id="propose-scenario" data-roles="writer dev" data-title="Proposing a scenario change">
+        <div class="sec-head"><h2>Proposing a scenario change</h2><div class="who"><span class="tag"><span class="d c-writer"></span>Item writer</span></div></div>
+        <p class="lead">If the module's scenario does not fit the task, you can propose another one. The test developer decides.</p>
+        <ol class="steps">
+          <li>In the editor, click <span class="ui">Propose Scenario Change</span>.</li>
+          <li>Choose an existing scenario from the catalogue (<span class="ui">Select Existing Scenario</span>) or describe a new one in your language (<span class="ui">Create New Scenario</span>, 10–500 characters). Then <span class="ui">Send proposal</span>.</li>
+          <li>Until it is decided you can keep writing and saving, but you <b>cannot submit</b> (<span class="ui">Submitting is blocked until the scenario proposal is decided</span>).</li>
+          <li>If approved, the module switches to the new scenario automatically. If rejected, the editor shows the reason, and you can propose again.</li>
+        </ol>
+        <figure class="shot narrow" data-shot="propose"><figcaption>Proposing a different scenario.</figcaption></figure>
+      </article>
+    </section>
+
+    <!-- ================= TRANSLATOR ================= -->
+    <section class="chapter" data-part="Translator">
+      <div class="part-title">3 · For translators</div>
+
+      <article class="sec" id="translations" data-roles="translator" data-title="My translations">
+        <div class="sec-head"><h2>My translations</h2><div class="who"><span class="tag"><span class="d c-translator"></span>Translator</span></div></div>
+        <p class="lead">A translation appears for you when the reviewer approves the source-language task and selects you as translator.</p>
+        <p>The <b>To translate</b> group in <span class="ui">My to-dos</span> or the <span class="ui">My translations</span> list shows the task groups to translate. The German/French/Italian columns show which language is done (<span class="ui">Done</span>), in progress (<span class="ui">In progress</span>), to translate (<span class="ui">To translate</span>) or not available yet.</p>
+        <figure class="shot" data-shot="translation-list"><figcaption>My translations: "Status shown for" (DE/FR/IT) decides which language's status the Status column shows; the language columns show all three.</figcaption></figure>
+        <div class="callout info"><p>Currently <b>no e-mail is sent</b> when translation tasks are created. Check your list regularly, or ask the test developer to let you know.</p></div>
+      </article>
+
+      <article class="sec" id="multi-editor" data-roles="translator dev" data-title="The multi-language editor">
+        <div class="sec-head"><h2>The multi-language editor</h2><div class="who"><span class="tag"><span class="d c-translator"></span>Translator</span><span class="tag"><span class="d c-dev"></span>Test developer</span></div></div>
+        <p class="lead">The language versions are shown in panels side by side, so you see the source text and your translation together.</p>
+        <figure class="shot" data-shot="multi-edit"><figcaption>Multi-language editor as a translator: the German source is "Source text · Read-only", the French and Italian panels are "You are editing".</figcaption></figure>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Panel header</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><span class="ui">You are editing</span></td><td>You are editing this language.</td></tr>
+            <tr><td><span class="ui">Read-only · Assigned to: Name</span></td><td>Someone else is working on it, or its status cannot be edited.</td></tr>
+            <tr><td><span class="ui">Source text</span></td><td>The original, source-language version. You translate from it; it cannot be changed.</td></tr>
+          </tbody>
+        </table></div>
+        <ul>
+          <li>Use the language toggles to hide or show panels. The current task is always visible.</li>
+          <li><span class="ui">Show tasks side by side</span> puts the tasks of the module next to each other.</li>
+          <li><span class="ui">Stop editing</span> switches your own panel to read-only view (e.g. to compare); <span class="ui">Edit</span> switches it back.</li>
+          <li>Switching language or task saves automatically.</li>
+        </ul>
+      </article>
+
+      <article class="sec" id="translate-submit" data-roles="translator" data-title="Translating and submitting">
+        <div class="sec-head"><h2>Translating and submitting</h2><div class="who"><span class="tag"><span class="d c-translator"></span>Translator</span></div></div>
+        <ol class="steps">
+          <li>Open the task (<span class="ui">Translate</span>).</li>
+          <li>The translation already has the item structure (numbering, example marks, alternatives) and the images, but the texts are empty. Fill in the <span class="ui">You are editing</span> panel.</li>
+          <li>Save as you go (<span class="ui">Save draft</span>); the status becomes <span class="st st-draft">Draft Translation</span>.</li>
+          <li>When done: <span class="ui">Submit translation</span> at the bottom of the panel, and confirm. The status becomes <span class="st st-translated">Translation Completed</span>.</li>
+        </ol>
+        <figure class="shot" data-shot="translation-submit"><figcaption>Each editable panel has its own save and submit buttons at the bottom, with the number of incomplete fields.</figcaption></figure>
+        <p>If you translate two languages, the page stays open after you submit one, and the unsaved text in the other panel is kept.</p>
+        <div class="callout info"><strong class="t">Why is it still waiting?</strong><p>Translation review starts when <b>every</b> language of <b>every</b> task in the module is done. Until then your submitted translation waits in <span class="st st-translated">Translation Completed</span>.</p></div>
+        <h3>If it is sent back</h3>
+        <p>The reviewer can send back a translation per language (<span class="st st-revision">Translation Revision</span>). It then appears in your to-dos again; fix it based on the comments and submit it again.</p>
+      </article>
+    </section>
+
+    <!-- ================= TEST DEVELOPER ================= -->
+    <section class="chapter" data-part="Test developer">
+      <div class="part-title">4 · For test developers</div>
+
+      <article class="sec" id="task-bank" data-roles="dev" data-title="Task bank">
+        <div class="sec-head"><h2>Task bank</h2><div class="who"><span class="tag"><span class="d c-dev"></span>Test developer</span></div></div>
+        <p class="lead">The <span class="ui">Task bank</span> is the test developer's main page: every module with its tasks, languages and assignees.</p>
+        <figure class="shot" data-shot="task-bank"><figcaption>Task bank: tabs with counts, search and filters, one module per row with language badges and assignees.</figcaption></figure>
+        <h3>Tabs</h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Tab</th><th>What it shows</th></tr></thead>
+          <tbody>
+            <tr><td><span class="ui">Waiting for me</span></td><td>Modules with a task waiting for your decision (Task Review, Translation Review, Final Review). <span class="ui">Open next task</span> opens the one that has waited longest.</td></tr>
+            <tr><td><span class="ui">Active</span></td><td>All modules in progress (default).</td></tr>
+            <tr><td><span class="ui">Writing</span> / <span class="ui">Translation</span> / <span class="ui">Trial &amp; final review</span></td><td>Modules in that phase.</td></tr>
+            <tr><td><span class="ui">Released</span> / <span class="ui">Closed</span> / <span class="ui">All</span></td><td>Released, closed (discarded, archived) and all modules.</td></tr>
+          </tbody>
+        </table></div>
+        <figure class="shot" data-shot="queue"><figcaption>"Waiting for me": the modules waiting for you and the "Open next task" button.</figcaption></figure>
+        <h3>Columns</h3>
+        <ul>
+          <li><b>Languages</b>: one badge per language. A dot marks the source language; "2/3" means how many tasks are done in that language. A tick: all done.</li>
+          <li><b>Assignee</b>: everyone working on the module in any language.</li>
+          <li>The <span class="ui">Live</span> label means status changes by others appear without reloading.</li>
+        </ul>
+        <h3>Side panel</h3>
+        <p>Click a row to open the side panel: scenario, module description (editable, saved on <kbd>Enter</kbd>), language summary, and for each task one row per language with status, assignee and actions.</p>
+        <figure class="shot" data-shot="task-bank-panel"><figcaption>Module side panel: status and assignee per task and language, change assignee and open.</figcaption></figure>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Action</th><th>Where</th><th>When to use it</th></tr></thead>
+          <tbody>
+            <tr><td><span class="ui">Open</span></td><td>language row of a task</td><td>Review or check it in the multi-language editor.</td></tr>
+            <tr><td><span class="ui">Change assignee</span> (icon next to Open)</td><td>language row of a task</td><td>Someone else takes over the task in its current status (e.g. holidays). The list only shows users who fit the status and speak the language; ★ = has worked on it. The new assignee gets an e-mail.</td></tr>
+            <tr><td><span class="ui">Cancel assignment</span></td><td>bottom of the panel</td><td>Only while no task of the module has been started (<span class="st st-assigned">Assigned</span>). The module and its tasks are deleted.</td></tr>
+            <tr><td><span class="ui">Archive module</span></td><td>bottom of the panel</td><td>Archives the whole module. Only possible for a released (<span class="st st-ready">Released</span>) module.</td></tr>
+          </tbody>
+        </table></div>
+        <figure class="shot narrow" data-shot="change-assignee"><figcaption>Change assignee: the current assignee, and a searchable list below; ★ = has worked on the task.</figcaption></figure>
+      </article>
+
+      <article class="sec" id="assign" data-roles="dev" data-title="Assigning a new module">
+        <div class="sec-head"><h2>Assigning a new module</h2><div class="who"><span class="tag"><span class="d c-dev"></span>Test developer</span></div></div>
+        <p class="lead">Task bank → <span class="ui">Assign a new module</span> (or <kbd>Ctrl</kbd> <kbd>K</kbd> → "assign"). The form has five numbered steps with a live summary below.</p>
+        <ol class="steps">
+          <li><b>Source language</b>: the language the task is written in. The other two are created later, for translation.</li>
+          <li><b>What to create</b>: test kind → skill → module or single task. Reading and Writing creates a whole module; Speaking and Listening Comprehension create a single task.</li>
+          <li><b>Scenario</b>: Domain → Action field → Scenario from the catalogue. If it is missing, add it to the <a href="#catalogue">catalogue</a> first.</li>
+          <li><b>Assign to</b>: only item writers who speak the source language are listed.</li>
+          <li><b>Instructions</b>: notes for the item writer, shown above the task. Required.</li>
+        </ol>
+        <p>Check the <span class="ui">Review before assigning</span> summary, then <span class="ui">Create &amp; assign</span>. The item writer gets an e-mail, and the tasks appear for them as <span class="st st-assigned">Assigned</span>. The deadline is 14 days from the assignment.</p>
+        <figure class="shot" data-shot="assignment"><figcaption>Assignment: source language, what to create, scenario, item writer.</figcaption></figure>
+        <figure class="shot narrow" data-shot="assignment-summary"><figcaption>The last step and the "Review before assigning" summary: anything still missing is shown in orange.</figcaption></figure>
+        <div class="callout tip"><p>You can assign the same module number (e.g. <code>module2</code>) several times with different scenarios. The test version wizard chooses between them step by step.</p></div>
+      </article>
+
+      <article class="sec" id="review" data-roles="dev" data-title="Reviewing and deciding">
+        <div class="sec-head"><h2>Reviewing and deciding</h2><div class="who"><span class="tag"><span class="d c-dev"></span>Test developer</span></div></div>
+        <ol class="steps">
+          <li>Open the task from the <span class="ui">Waiting for me</span> tab (or <span class="ui">Open next task</span>).</li>
+          <li>Check the content. Where something needs fixing, add a <b>comment to the field</b>: the speech bubble icon next to the field → <span class="ui">Add Comment</span> → text → <span class="ui">Post comment</span>.</li>
+          <li>Choose a decision in the <span class="ui">Your decision</span> panel. Going back is on the left, moving forward on the right; each card describes what happens.</li>
+          <li>Check the assignees in the confirmation dialog, then <span class="ui">Confirm change</span>.</li>
+        </ol>
+        <figure class="shot" data-shot="comments"><figcaption>Writing a comment on a field. The header shows how many comments are open.</figcaption></figure>
+        <figure class="shot" data-shot="decision"><figcaption>Review (Task Review): lifecycle, next step and the "Your decision" panel with two decisions.</figcaption></figure>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Status</th><th>Decision</th><th>What the confirmation asks for</th></tr></thead>
+          <tbody>
+            <tr><td><span class="st st-review">Task Review</span></td><td><span class="ui">Send back for revision</span></td><td>The item writer (preselected). Your comments go with it.</td></tr>
+            <tr><td><span class="st st-review">Task Review</span></td><td><span class="ui">Approve and send to translation</span></td><td>One translator for each of the other two languages (list filtered by language pair).</td></tr>
+            <tr><td><span class="st st-review">Translation Review</span></td><td><span class="ui">Request translation changes</span></td><td>Which languages need revision, and who translates them. Unselected languages stay unchanged.</td></tr>
+            <tr><td><span class="st st-review">Translation Review</span></td><td><span class="ui">Approve and mark ready for trial</span></td><td>The reviewer. The <b>whole module</b> becomes <span class="st st-ready">Ready for Trial</span>, so this only works when every task of the module is in translation review.</td></tr>
+            <tr><td><span class="st st-testing">In Testing</span></td><td><span class="ui">Move to final review</span></td><td>The reviewer. Applies to the whole module.</td></tr>
+            <tr><td><span class="st st-review">Final Review</span></td><td><span class="ui">Discard task</span></td><td>Discards the whole module.</td></tr>
+          </tbody>
+        </table></div>
+        <div class="start-grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin-top:4px">
+          <figure class="shot" data-shot="confirm-translation" style="margin:0"><figcaption>Send to translation: one translator per language.</figcaption></figure>
+          <figure class="shot" data-shot="confirm-revision" style="margin:0"><figcaption>Send translations back: only the selected languages go back.</figcaption></figure>
+        </div>
+        <p>After a decision you return to the <span class="ui">Waiting for me</span> tab, so the next task is one click away.</p>
+        <h3>Editing someone else's task</h3>
+        <p>As a test developer you can edit any task. If the task is not assigned to you, you must give a <b>modification reason</b> when saving (Content Update, Error Correction, Language Improvement, Structure Change, Other) and a short description. This goes into the change history.</p>
+        <h3>Changing the scenario</h3>
+        <p>For an assigned module you can change the domain, action field and scenario directly with the pencil next to the scenario in the multi-language editor.</p>
+      </article>
+
+      <article class="sec" id="history" data-roles="dev" data-title="Change history">
+        <div class="sec-head"><h2>Change history</h2><div class="who"><span class="tag"><span class="d c-dev"></span>Test developer</span></div></div>
+        <p>Expand the <span class="ui">Change history</span> bar at the bottom of the multi-language editor to see the history of the task group: status changes, assignee changes and content changes, with language and modification reason. <span class="ui">View changes</span> opens the comparison: the old and new version side by side, with the changed fields highlighted. <span class="ui">Next change</span> scrolls to the next difference.</p>
+        <figure class="shot" data-shot="history"><figcaption>The "Change history" list at the bottom of the editor, with a "View changes" button per row.</figcaption></figure>
+        <figure class="shot" data-shot="audit"><figcaption>Comparing changes: the changed fields are highlighted on both sides.</figcaption></figure>
+      </article>
+
+      <article class="sec" id="proposals" data-roles="dev" data-title="Deciding on scenario proposals">
+        <div class="sec-head"><h2>Deciding on scenario proposals</h2><div class="who"><span class="tag"><span class="d c-dev"></span>Test developer</span></div></div>
+        <p class="lead">A pending proposal blocks the module, so decide quickly. A badge in the sidebar counts pending proposals.</p>
+        <ol class="steps">
+          <li><span class="ui">Scenario proposals</span> → <span class="ui">Pending</span> tab → <span class="ui">Review</span>.</li>
+          <li><b>Approve</b>: enter the scenario text in the two missing languages (at least 10 characters each; you can also correct the proposer's language), then <span class="ui">Approve</span>. The new scenario is added to the catalogue and the module switches to it.</li>
+          <li><b>Reject</b>: <span class="ui">Reject Proposal</span>; a reason is required. The item writer sees the reason in the editor.</li>
+        </ol>
+        <figure class="shot" data-shot="proposals"><figcaption>The list of scenario proposals.</figcaption></figure>
+      </article>
+
+      <article class="sec" id="catalogue" data-roles="dev writer translator" data-title="Scenario catalogue">
+        <div class="sec-head"><h2>Scenario catalogue</h2><div class="who"><span class="tag"><span class="d c-dev"></span>Test developer</span><span class="tag"><span class="d c-all"></span>Everyone can read</span></div></div>
+        <p>Domains, action fields and scenarios in all three languages, in a searchable table. As a test developer you can add new entries: <span class="ui">Add new domain</span>, <span class="ui">Add new action field</span> (under a domain), <span class="ui">Add new scenario</span> (under an action field). The name is required in all three languages.</p>
+        <figure class="shot" data-shot="scenarios"><figcaption>Scenario catalogue.</figcaption></figure>
+        <div class="callout warn"><p>Entries cannot be edited or deleted in the interface once added. If you make a typo, contact the administrator.</p></div>
+      </article>
+
+      <article class="sec" id="test-versions" data-roles="dev" data-title="Test versions and export">
+        <div class="sec-head"><h2>Test versions and export</h2><div class="who"><span class="tag"><span class="d c-dev"></span>Test developer</span></div></div>
+        <p class="lead">You build a test version for the trial from <span class="st st-ready">Ready for Trial</span> modules.</p>
+        <ol class="steps">
+          <li><span class="ui">Test versions</span> → <span class="ui">Create TestVersion</span>.</li>
+          <li>Choose the variant (Normal, Erprobung, Modell, Schulung), the test kind and the skill, then the level, and enter the version number. The available levels depend on these choices; if the list is empty, change the choices above.</li>
+          <li>The wizard asks for one module number per step. Select <b>exactly one</b> module instance; expand a row to see its tasks.</li>
+          <li>If there is no suitable module: <span class="ui">Create module</span>. The assignment form opens prefilled, and afterwards you come back to the same step.</li>
+          <li>Moving between steps saves automatically. At the end: <span class="ui">Finish</span>.</li>
+        </ol>
+        <figure class="shot" data-shot="wizard"><figcaption>Test version wizard: the parameters and the steps (module numbers) at the top, the available module instances below.</figcaption></figure>
+        <p>A module added to a test version moves to <span class="st st-testing">In Testing</span>; if you remove it, it goes back to <span class="st st-ready">Ready for Trial</span>.</p>
+        <h3>Export</h3>
+        <p>Use <span class="ui">Export</span> on a row to download a ZIP per language. It contains <code>export.csv</code> (one header row and one data row, separated by semicolons) and the referenced images. Only preferred alternatives are included.</p>
+        <figure class="shot" data-shot="test-versions"><figcaption>Test versions list: archive, export per language, edit.</figcaption></figure>
+      </article>
+    </section>
+
+    <!-- ================= HELP ================= -->
+    <section class="chapter" data-part="Help">
+      <div class="part-title">5 · If you are stuck</div>
+
+      <article class="sec" id="troubleshooting" data-roles="all" data-title="Troubleshooting">
+        <div class="sec-head"><h2>Troubleshooting</h2><div class="who"><span class="tag"><span class="d c-all"></span>Everyone</span></div></div>
+        <p class="lead">Click a question to see the answer. The search above also searches the answers.</p>
+        <div class="faq-tools"><button class="btn-sm" id="faqOpen">Expand all</button><button class="btn-sm" id="faqClose">Collapse all</button></div>
+
+        <details class="faq" data-roles="writer translator"><summary>The submit button is disabled</summary><div class="a">
+          <ul>
+            <li>A required field is missing: check the number in the bar and click <span class="ui">Show me</span>.</li>
+            <li>The module has a pending scenario proposal: wait for the test developer's decision.</li>
+            <li>The task is no longer with you (e.g. you submitted it for review): the editor is read-only.</li>
+          </ul></div></details>
+
+        <details class="faq" data-roles="writer translator"><summary>"This task is not available to you"</summary><div class="a">
+          <p>The task has moved on in the workflow or was assigned to someone else. Your current work is listed under <span class="ui">My to-dos</span>.</p></div></details>
+
+        <details class="faq" data-roles="writer translator"><summary>No reviewer can be selected when submitting</summary><div class="a">
+          <p>If the reviewer field is empty, pick someone from the list. If the list is empty too, no test developer speaks that language. Contact the module's test developer or the administrator (the user's spoken languages need to be set).</p></div></details>
+
+        <details class="faq" data-roles="writer"><summary>"Missing solution key" warning when submitting</summary><div class="a">
+          <p>Some items have no correct answer. <span class="ui">Go to Answer Key</span> → fill them in at the key icons. If the task type has no answer key editor, the warning says so, and <span class="ui">Proceed anyway</span> is the right choice.</p></div></details>
+
+        <details class="faq" data-roles="writer translator"><summary>Did I lose my work?</summary><div class="a">
+          <p>Switching task or language saves automatically. When you leave with unsaved changes you get a warning. If you chose "Leave without saving", the unsaved part is gone; your last saved draft is kept.</p></div></details>
+
+        <details class="faq" data-roles="writer translator dev"><summary>I did not get an e-mail</summary><div class="a">
+          <ul>
+            <li>Check your spam folder.</li>
+            <li>The administrator may have turned off e-mail notifications in your profile.</li>
+            <li>No e-mail is sent when translation tasks are created, or when a draft is saved.</li>
+            <li>There is currently no reminder about approaching deadlines.</li>
+          </ul></div></details>
+
+        <details class="faq" data-roles="translator"><summary>I submitted my translation, but it does not go to review</summary><div class="a">
+          <p>Translation review only starts when every language of every task in the module is done. Until then it waits in <span class="st st-translated">Translation Completed</span>. You have nothing to do.</p></div></details>
+
+        <details class="faq" data-roles="translator"><summary>The panel of my language is "Read-only"</summary><div class="a">
+          <p>The header shows who has the task. If it should be with you, ask the test developer to assign it to you in the task bank (<span class="ui">Change assignee</span>).</p></div></details>
+
+        <details class="faq" data-roles="dev"><summary>"Approve and mark ready for trial" gives an error</summary><div class="a">
+          <p>This step applies to the whole module. It only works when <b>every</b> language of <b>every</b> task in the module is in <span class="st st-review">Translation Review</span>. If a language is still being revised, wait for it.</p></div></details>
+
+        <details class="faq" data-roles="dev"><summary>I cannot add a module to a test version</summary><div class="a">
+          <ul>
+            <li>The module has the wrong status (it must be Ready for Trial).</li>
+            <li>The module's level, test kind or skill does not match the test version.</li>
+            <li>The module has a pending scenario proposal.</li>
+          </ul></div></details>
+
+        <details class="faq" data-roles="dev"><summary>Archiving or releasing fails</summary><div class="a">
+          <p>Known limitation: the release step (<span class="ui">Release task</span>) currently gives an error, so neither modules nor test versions become "Released", and so they cannot be archived either. From final review, only discarding (<span class="ui">Discard task</span>) works at the moment, for the whole module. A fix is in progress; until then leave the module in <span class="st st-review">Final Review</span>.</p></div></details>
+
+        <details class="faq" data-roles="dev"><summary>I assigned the wrong item writer or the wrong scenario</summary><div class="a">
+          <ul>
+            <li>Wrong item writer: <span class="ui">Change assignee</span> on the task row.</li>
+            <li>Wrong scenario: the pencil next to the scenario in the multi-language editor.</li>
+            <li>Completely wrong assignment: while nobody has started it, <span class="ui">Cancel assignment</span> in the task bank side panel.</li>
+          </ul></div></details>
+
+        <details class="faq" data-roles="dev"><summary>I cannot find the translator in the list</summary><div class="a">
+          <p>Only users with translator permission and the right language pair (source language → target language) are listed. The administrator sets the language pairs on the user's profile.</p></div></details>
+
+        <details class="faq" data-roles="all"><summary>I cannot see a menu item / "Unauthorized"</summary><div class="a">
+          <p>The menu follows your group membership. Ask the administrator to add you to the right group, then sign out and in again.</p></div></details>
+
+        <details class="faq" data-roles="all"><summary>The task bank loads slowly, or "The modules could not be loaded"</summary><div class="a">
+          <p>With many modules, loading can take a few seconds. If you see the error, click the retry button; if it keeps failing, the server is probably restarting, so try again in a few minutes.</p></div></details>
+      </article>
+
+      <article class="sec" id="statuses" data-roles="all" data-title="Statuses">
+        <div class="sec-head"><h2>Statuses</h2><div class="who"><span class="tag"><span class="d c-all"></span>Everyone</span></div></div>
+        <p class="lead">The status of a language version, and whose turn it is.</p>
+        <input class="filter-input" id="stFilter" type="search" placeholder="Filter statuses…" aria-label="Filter statuses">
+        <div class="table-wrap"><table id="stTable">
+          <thead><tr><th>Status</th><th>Meaning</th><th>Whose turn</th></tr></thead>
+          <tbody>
+            <tr><td><span class="st st-assigned">Assigned</span></td><td>Assigned, not started yet.</td><td>Item writer</td></tr>
+            <tr><td><span class="st st-draft">Draft</span></td><td>The item writer saved it but has not submitted it.</td><td>Item writer</td></tr>
+            <tr><td><span class="st st-review">Task Review</span></td><td>Submitted; the reviewer is checking it.</td><td>Test developer</td></tr>
+            <tr><td><span class="st st-revision">Task Revision</span></td><td>Sent back for revision, with comments.</td><td>Item writer</td></tr>
+            <tr><td><span class="st st-assigned">Assigned To Translation</span></td><td>Translation version created; the translator has not started.</td><td>Translator</td></tr>
+            <tr><td><span class="st st-draft">Draft Translation</span></td><td>The translator saved it but has not submitted it.</td><td>Translator</td></tr>
+            <tr><td><span class="st st-translated">Translation Completed</span></td><td>Translation submitted (for the source language: approved). Waits until every language of the module is done.</td><td>–</td></tr>
+            <tr><td><span class="st st-review">Translation Review</span></td><td>The reviewer compares the languages.</td><td>Test developer</td></tr>
+            <tr><td><span class="st st-revision">Translation Revision</span></td><td>A language was sent back to its translator.</td><td>Translator</td></tr>
+            <tr><td><span class="st st-ready">Ready for Trial</span></td><td>All languages approved; can go into a test version.</td><td>Test developer</td></tr>
+            <tr><td><span class="st st-testing">In Testing</span></td><td>In a test version, being tried out.</td><td>Test developer</td></tr>
+            <tr><td><span class="st st-review">Final Review</span></td><td>Tried out; waiting for the final decision.</td><td>Test developer</td></tr>
+            <tr><td><span class="st st-ready">Released</span></td><td>Released; can be used in tests.</td><td>–</td></tr>
+            <tr><td><span class="st st-discarded">Discarded</span></td><td>Discarded; will not be used.</td><td>–</td></tr>
+            <tr><td><span class="st st-archived">Archived</span></td><td>Archived.</td><td>–</td></tr>
+            <tr><td><span class="st st-discarded">Blocked</span></td><td>Blocked.</td><td>–</td></tr>
+          </tbody>
+        </table></div>
+        <h3>Module status</h3>
+        <p>The module status is calculated from its tasks: <b>Assigned</b> (nothing started), <b>In Progress</b> (writing, review), <b>In Translation</b> (any task in translation), then <b>Ready for Trial</b>, <b>In Testing</b>, <b>Final Review</b>, <b>Released</b> / <b>Discarded</b> / <b>Archived</b> once every task has reached that point.</p>
+      </article>
+
+      <article class="sec" id="shortcuts" data-roles="all" data-title="Keyboard shortcuts">
+        <div class="sec-head"><h2>Keyboard shortcuts</h2><div class="who"><span class="tag"><span class="d c-all"></span>Everyone</span></div></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Key</th><th>Where</th><th>Effect</th></tr></thead>
+          <tbody>
+            <tr><td><kbd>Ctrl</kbd> <kbd>K</kbd> / <kbd>⌘</kbd> <kbd>K</kbd></td><td>Application</td><td>Quick search for pages and actions</td></tr>
+            <tr><td><kbd>Enter</kbd></td><td>Task bank, module description</td><td>Saves the description</td></tr>
+            <tr><td><kbd>Esc</kbd></td><td>Dialogs, side panel</td><td>Closes (while editing, only closes the edit)</td></tr>
+            <tr><td><kbd>/</kbd> or <kbd>Ctrl</kbd> <kbd>K</kbd></td><td>This guide</td><td>Search</td></tr>
+            <tr><td><kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd></td><td>This guide, search results</td><td>Select and open a result</td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <div class="foot">FideV2 · Test Development user guide · based on the interface of the <code>feature/td-integration</code> branch, October 2026. The screenshots show test data.</div>
+    </section>
+  </main>
+</div>
+
+<button class="icon-btn backtop" id="backTop" hidden aria-label="Back to top">↑ Top</button>
+
+<div class="lightbox" id="lb" hidden role="dialog" aria-modal="true" aria-label="Enlarged screenshot">
+  <div class="lb-bar"><span id="lbCap"></span><button id="lbFull">Actual size</button><button id="lbClose">Close (Esc)</button></div>
+  <div class="lb-body" id="lbBody"><img id="lbImg" alt=""></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+
+  /* ---------- Screenshots ---------- */
+  $$("figure.shot").forEach(function (fig) {
+    var cap = fig.querySelector("figcaption");
+    var src = fig.getAttribute("data-src");
+    var btn = document.createElement("button");
+    btn.className = "frame";
+    btn.type = "button";
+    if (src) {
+      var img = document.createElement("img");
+      img.src = src; img.alt = cap ? cap.textContent : ""; img.loading = "lazy"; img.decoding = "async";
+      if (fig.dataset.w) { img.width = +fig.dataset.w; img.height = +fig.dataset.h; }
+      btn.appendChild(img);
+      var hint = document.createElement("span"); hint.className = "zoom-hint"; hint.textContent = "Zoom";
+      btn.appendChild(hint);
+      btn.setAttribute("aria-label", "Enlarge screenshot: " + (cap ? cap.textContent : ""));
+      btn.addEventListener("click", function () { openLb(src, cap ? cap.textContent : ""); });
+    } else {
+      var ph = document.createElement("div"); ph.className = "ph"; ph.textContent = "Screenshot: " + fig.getAttribute("data-shot");
+      btn.appendChild(ph); btn.disabled = true; btn.style.cursor = "default";
+    }
+    fig.insertBefore(btn, cap);
+  });
+
+  var lb = $("#lb"), lbImg = $("#lbImg"), lbBody = $("#lbBody"), lastFocus = null;
+  function openLb(src, cap) {
+    lastFocus = document.activeElement;
+    lbImg.src = src; lbImg.alt = cap; $("#lbCap").textContent = cap; lbBody.classList.remove("full");
+    $("#lbFull").textContent = "Actual size";
+    lb.hidden = false; $("#lbClose").focus();
+  }
+  function closeLb() { lb.hidden = true; if (lastFocus) lastFocus.focus(); }
+  $("#lbClose").addEventListener("click", closeLb);
+  $("#lbFull").addEventListener("click", function () {
+    var f = lbBody.classList.toggle("full");
+    this.textContent = f ? "Fit to screen" : "Actual size";
+  });
+  lb.addEventListener("click", function (e) { if (e.target === lb || e.target === lbBody) closeLb(); });
+
+  /* ---------- TOC ---------- */
+  var secs = $$("article.sec");
+  var toc = $("#toc"), ol = document.createElement("ol");
+  $$("section.chapter").forEach(function (ch) {
+    var li = document.createElement("li");
+    var part = document.createElement("span"); part.className = "part";
+    part.textContent = ch.querySelector(".part-title").textContent;
+    li.appendChild(part);
+    var inner = document.createElement("ol");
+    $$("article.sec", ch).forEach(function (a) {
+      var l = document.createElement("li"); l.dataset.target = a.id;
+      var link = document.createElement("a"); link.href = "#" + a.id; link.textContent = a.dataset.title;
+      l.appendChild(link); inner.appendChild(l);
+    });
+    li.appendChild(inner); ol.appendChild(li);
+  });
+  toc.appendChild(ol);
+
+  /* copy-link button on each section */
+  secs.forEach(function (a) {
+    var h = a.querySelector(".sec-head");
+    var b = document.createElement("button"); b.className = "copy-link"; b.type = "button";
+    b.textContent = "#"; b.title = "Link to this section"; b.setAttribute("aria-label", "Copy link: " + a.dataset.title);
+    b.addEventListener("click", function () {
+      var url = location.href.split("#")[0] + "#" + a.id;
+      var done = function () { b.textContent = "Copied"; setTimeout(function () { b.textContent = "#"; }, 1400); };
+      try { navigator.clipboard.writeText(url).then(done, function () { location.hash = a.id; }); } catch (e) { location.hash = a.id; }
+    });
+    h.querySelector("h2").after(b);
+  });
+
+  /* active section highlight */
+  var tocLinks = {};
+  $$("li[data-target]", toc).forEach(function (li) { tocLinks[li.dataset.target] = li.querySelector("a"); });
+  var current = null;
+  function setActive(id) {
+    if (current === id) return; current = id;
+    Object.keys(tocLinks).forEach(function (k) { tocLinks[k].classList.toggle("active", k === id); });
+  }
+  if ("IntersectionObserver" in window) {
+    var vis = {};
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { vis[e.target.id] = e.isIntersecting ? e.boundingClientRect.top : undefined; });
+      var best = null, bestTop = Infinity;
+      secs.forEach(function (s) { var t = vis[s.id]; if (t !== undefined && t < bestTop) { best = s.id; bestTop = t; } });
+      if (best) setActive(best);
+    }, { rootMargin: "-70px 0px -55% 0px" });
+    secs.forEach(function (s) { io.observe(s); });
+  }
+
+  /* ---------- Role filter ---------- */
+  var role = store.get("fide-guide-role") || "all";
+  function applyRole(r) {
+    role = r; store.set("fide-guide-role", r);
+    $$("#roleChips .chip").forEach(function (c) { c.setAttribute("aria-pressed", String(c.dataset.role === r)); });
+    secs.forEach(function (a) {
+      var roles = (a.dataset.roles || "all").split(" ");
+      var show = r === "all" || roles.indexOf("all") > -1 || roles.indexOf(r) > -1;
+      a.classList.toggle("hidden-role", !show);
+      var li = toc.querySelector('li[data-target="' + a.id + '"]');
+      if (li) li.hidden = !show;
+    });
+    $$("details.faq").forEach(function (d) {
+      var roles = (d.dataset.roles || "all").split(" ");
+      d.hidden = !(r === "all" || roles.indexOf("all") > -1 || roles.indexOf(r) > -1);
+    });
+    $$("section.chapter").forEach(function (ch) {
+      var any = $$("article.sec", ch).some(function (a) { return !a.classList.contains("hidden-role"); });
+      ch.hidden = !any;
+      var li = null;
+    });
+  }
+  $$("#roleChips .chip").forEach(function (c) { c.addEventListener("click", function () { applyRole(c.dataset.role); }); });
+  $$(".start-card").forEach(function (c) { c.addEventListener("click", function () { applyRole(c.dataset.pick); }); });
+  applyRole(role);
+
+  /* ---------- FAQ ---------- */
+  $("#faqOpen").addEventListener("click", function () { $$("details.faq").forEach(function (d) { d.open = true; }); });
+  $("#faqClose").addEventListener("click", function () { $$("details.faq").forEach(function (d) { d.open = false; }); });
+
+  /* ---------- Status filter ---------- */
+  $("#stFilter").addEventListener("input", function () {
+    var q = norm(this.value);
+    $$("#stTable tbody tr").forEach(function (tr) { tr.hidden = q && norm(tr.textContent).indexOf(q) === -1; });
+  });
+
+  /* ---------- Search ---------- */
+  function cleanText(el) {
+    var c = el.cloneNode(true);
+    Array.prototype.forEach.call(c.querySelectorAll(".who, .copy-link, figure, .faq-tools"), function (x) { x.remove(); });
+    return c.textContent.replace(/\s+/g, " ").trim();
+  }
+  function norm(s) { return (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); }
+  var index = [];
+  secs.forEach(function (a) {
+    var part = a.closest("section.chapter").dataset.part;
+    var at = cleanText(a).replace(a.dataset.title, "").trim();
+    index.push({ el: a, id: a.id, title: a.dataset.title, part: part, text: at, ntext: norm(at), ntitle: norm(a.dataset.title) });
+    $$("details.faq", a).forEach(function (d, i) {
+      if (!d.id) d.id = a.id + "-k" + (i + 1);
+      var t = d.querySelector("summary").textContent;
+      var dt = cleanText(d.querySelector(".a"));
+      index.push({ el: d, id: d.id, title: t, part: "Troubleshooting", text: dt, ntext: norm(t + " " + dt), ntitle: norm(t), faq: true });
+    });
+    $$("h3", a).forEach(function (h, i) {
+      if (!h.id) h.id = a.id + "-" + (i + 1);
+      var body = "", n = h.nextElementSibling;
+      while (n && n.tagName !== "H3") { if (n.tagName !== "FIGURE") body += " " + cleanText(n); n = n.nextElementSibling; }
+      index.push({ el: h, id: h.id, title: h.textContent, part: a.dataset.title, text: body, ntext: norm(body), ntitle: norm(h.textContent), sub: true });
+    });
+  });
+
+  var q = $("#q"), res = $("#results"), sel = -1, hits = [];
+  function snippet(text, terms) {
+    var nt = norm(text), pos = -1;
+    for (var i = 0; i < terms.length; i++) { pos = nt.indexOf(terms[i]); if (pos > -1) break; }
+    if (pos < 0) return text.replace(/\s+/g, " ").slice(0, 110) + "…";
+    var start = Math.max(0, pos - 40), s = text.slice(start, pos + 90).replace(/\s+/g, " ");
+    return (start > 0 ? "…" : "") + s + "…";
+  }
+  function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function hl(s, terms) {
+    var out = esc(s), ns = norm(s), ranges = [];
+    terms.forEach(function (t) { var p = 0, i; while (t && (i = ns.indexOf(t, p)) > -1) { ranges.push([i, i + t.length]); p = i + t.length; } });
+    if (!ranges.length) return out;
+    ranges.sort(function (a, b) { return a[0] - b[0]; });
+    var r = "", last = 0;
+    ranges.forEach(function (g) { if (g[0] < last) return; r += esc(s.slice(last, g[0])) + "<mark class=\"hit\">" + esc(s.slice(g[0], g[1])) + "</mark>"; last = g[1]; });
+    return r + esc(s.slice(last));
+  }
+  function search(v) {
+    var terms = norm(v).split(/\s+/).filter(function (t) { return t.length > 1 || /[★#/]/.test(t); });
+    if (!terms.length) { res.hidden = true; q.setAttribute("aria-expanded", "false"); clearMarks(); return; }
+    hits = index.map(function (e) {
+      var score = 0;
+      for (var i = 0; i < terms.length; i++) {
+        var t = terms[i], inT = e.ntitle.indexOf(t) > -1, inB = e.ntext.indexOf(t) > -1;
+        if (!inT && !inB) return null;
+        score += (inT ? 10 : 0) + (inB ? 2 : 0);
+      }
+      if (e.faq) score += 3;
+      if (e.sub) score -= 1;
+      return { e: e, score: score };
+    }).filter(Boolean).sort(function (a, b) { return b.score - a.score; }).slice(0, 12);
+    sel = hits.length ? 0 : -1;
+    var html = '<div class="r-head"><span>' + (hits.length ? hits.length + " results" : "") + '</span><span><kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd></span></div>';
+    if (!hits.length) html = '<div class="r-empty">No results for "' + esc(v) + '". Try a shorter word, e.g. "submit", "translat", "review".</div>';
+    hits.forEach(function (h, i) {
+      html += '<a href="#' + h.e.id + '" role="option" data-i="' + i + '" aria-selected="' + (i === 0) + '">' +
+        '<div class="r-title">' + hl(h.e.title, terms) + ' <span class="r-path">' + esc(h.e.part) + '</span></div>' +
+        '<div class="r-snip">' + hl(snippet(h.e.text, terms), terms) + '</div></a>';
+    });
+    res.innerHTML = html; res.hidden = false; q.setAttribute("aria-expanded", "true");
+  }
+  function moveSel(d) {
+    if (!hits.length) return;
+    sel = (sel + d + hits.length) % hits.length;
+    $$("a", res).forEach(function (a, i) { a.setAttribute("aria-selected", String(i === sel)); if (i === sel) a.scrollIntoView({ block: "nearest" }); });
+  }
+  function clearMarks() {
+    $$("mark.hit", $("#main")).forEach(function (m) { var t = document.createTextNode(m.textContent); m.parentNode.replaceChild(t, m); t.parentNode.normalize(); });
+  }
+  function markIn(el, terms) {
+    clearMarks();
+    var root = el.tagName === "H3" ? el.closest("article") : el;
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: function (n) { return n.parentNode.closest("script,style,button.copy-link") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT; }
+    });
+    var nodes = [], n; while ((n = walker.nextNode())) nodes.push(n);
+    var first = null;
+    nodes.forEach(function (node) {
+      var s = node.nodeValue, ns = norm(s), ranges = [];
+      terms.forEach(function (t) { var p = 0, i; while ((i = ns.indexOf(t, p)) > -1) { ranges.push([i, i + t.length]); p = i + t.length; } });
+      if (!ranges.length) return;
+      ranges.sort(function (a, b) { return a[0] - b[0]; });
+      var frag = document.createDocumentFragment(), last = 0;
+      ranges.forEach(function (g) {
+        if (g[0] < last) return;
+        frag.appendChild(document.createTextNode(s.slice(last, g[0])));
+        var m = document.createElement("mark"); m.className = "hit"; m.textContent = s.slice(g[0], g[1]);
+        frag.appendChild(m); if (!first) first = m; last = g[1];
+      });
+      frag.appendChild(document.createTextNode(s.slice(last)));
+      node.parentNode.replaceChild(frag, node);
+    });
+    return first;
+  }
+  function go(i) {
+    var h = hits[i]; if (!h) return;
+    var terms = norm(q.value).split(/\s+/).filter(function (t) { return t.length > 1; });
+    if (role !== "all" && h.e.el.closest("article.sec.hidden-role, details[hidden]")) applyRole("all");
+    if (h.e.faq) h.e.el.open = true;
+    res.hidden = true; q.setAttribute("aria-expanded", "false");
+    document.body.classList.remove("nav-open");
+    var first = markIn(h.e.el, terms);
+    var target = h.e.faq || h.e.sub ? h.e.el : (first || h.e.el);
+    if (first) first.classList.add("current");
+    target.scrollIntoView({ block: h.e.faq || h.e.sub || !first ? "start" : "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    try { history.replaceState(null, "", "#" + h.e.id); } catch (e) {}
+  }
+  var t0;
+  q.addEventListener("input", function () { clearTimeout(t0); var v = q.value; t0 = setTimeout(function () { search(v); }, 90); });
+  q.addEventListener("focus", function () { if (q.value.trim()) search(q.value); });
+  q.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowDown") { e.preventDefault(); moveSel(1); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); moveSel(-1); }
+    else if (e.key === "Enter") { e.preventDefault(); go(sel < 0 ? 0 : sel); }
+    else if (e.key === "Escape") { if (q.value) { q.value = ""; search(""); } else { q.blur(); } }
+  });
+  res.addEventListener("mousedown", function (e) { var a = e.target.closest("a[data-i]"); if (a) { e.preventDefault(); go(+a.dataset.i); } });
+  document.addEventListener("click", function (e) { if (!e.target.closest(".search-wrap")) { res.hidden = true; q.setAttribute("aria-expanded", "false"); } });
+
+  /* ---------- Keys, menu, theme, back to top ---------- */
+  document.addEventListener("keydown", function (e) {
+    var typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+    if (!lb.hidden && e.key === "Escape") { closeLb(); return; }
+    if ((e.key === "k" || e.key === "K") && (e.ctrlKey || e.metaKey)) { e.preventDefault(); q.focus(); q.select(); return; }
+    if (e.key === "/" && !typing) { e.preventDefault(); q.focus(); q.select(); }
+    if (e.key === "Escape" && document.body.classList.contains("nav-open")) toggleNav(false);
+  });
+  function toggleNav(open) {
+    document.body.classList.toggle("nav-open", open);
+    $("#menuBtn").setAttribute("aria-expanded", String(open));
+  }
+  $("#menuBtn").addEventListener("click", function () { toggleNav(!document.body.classList.contains("nav-open")); });
+  document.addEventListener("click", function (e) {
+    if (document.body.classList.contains("nav-open") && !e.target.closest("#side") && !e.target.closest("#menuBtn")) toggleNav(false);
+  });
+  toc.addEventListener("click", function (e) { if (e.target.closest("a")) toggleNav(false); });
+
+  var saved = store.get("fide-guide-theme");
+  if (saved) document.documentElement.setAttribute("data-theme", saved);
+  $("#themeBtn").addEventListener("click", function () {
+    var cur = document.documentElement.getAttribute("data-theme") ||
+      (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    var next = cur === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next); store.set("fide-guide-theme", next);
+  });
+
+  var bt = $("#backTop");
+  window.addEventListener("scroll", function () { bt.hidden = window.scrollY < 900; }, { passive: true });
+  bt.addEventListener("click", function () { window.scrollTo({ top: 0, behavior: "smooth" }); q.focus({ preventScroll: true }); });
+
+  /* open hash target */
+  function openHash() {
+    var id = (location.hash || "").slice(1); if (!id) return;
+    var el = document.getElementById(id); if (!el) return;
+    if (el.tagName === "DETAILS") el.open = true;
+    if (el.closest(".hidden-role, [hidden]")) applyRole("all");
+    setTimeout(function () { el.scrollIntoView({ block: "start" }); }, 30);
+  }
+  openHash();
+  window.addEventListener("hashchange", openHash);
+})();
+</script>
